@@ -30,6 +30,7 @@ impl SshProfile {
             return Err("Enter a valid SSH host name or IP address.".into());
         }
         if self.username.is_empty()
+            || self.username.starts_with('-')
             || self.username.len() > 64
             || !self.username.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-'))
         {
@@ -163,7 +164,7 @@ mod tests {
         profile.host = "-oProxyCommand=evil".into();
         assert!(profile.validate().is_err());
         let mut profile = valid_profile();
-        profile.username = "user -oProxyCommand=evil".into();
+        profile.username = "-oProxyCommand=evil".into();
         assert!(profile.validate().is_err());
     }
 
@@ -182,6 +183,6 @@ mod tests {
         let args = build_arguments(&valid_profile());
         assert!(args.iter().any(|arg| arg == "127.0.0.1:1080"));
         assert!(args.iter().any(|arg| arg == "tunnel_user@example.com"));
-        assert!(args.windows(2).any(|pair| pair == ["-o", "StrictHostKeyChecking=yes"]));
+        assert!(args.windows(2).any(|pair| pair[0] == "-o" && pair[1] == "StrictHostKeyChecking=yes"));
     }
 }
