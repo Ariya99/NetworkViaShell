@@ -259,7 +259,15 @@ mod tests {
 
         static NEXT_SCRIPT: AtomicU64 = AtomicU64::new(0);
 
-        fn fake_ssh(body: &str) -> PathBuf {
+        struct FakeSsh(PathBuf);
+
+        impl Drop for FakeSsh {
+            fn drop(&mut self) {
+                let _ = fs::remove_file(&self.0);
+            }
+        }
+
+        fn fake_ssh(body: &str) -> FakeSsh {
             let id = NEXT_SCRIPT.fetch_add(1, Ordering::Relaxed);
             let path = std::env::temp_dir().join(format!(
                 "network-via-shell-fake-ssh-{}-{id}.sh",
@@ -269,7 +277,7 @@ mod tests {
             let mut permissions = fs::metadata(&path).unwrap().permissions();
             permissions.set_mode(0o700);
             fs::set_permissions(&path, permissions).unwrap();
-            path
+            FakeSsh(path)
         }
 
         fn free_port() -> u16 {
@@ -298,13 +306,12 @@ exec python3 -c 'import socket,sys,time; s=socket.socket(); s.setsockopt(socket.
             let port = listener.local_addr().unwrap().port();
             let script = fake_ssh("exit 0");
             let manager =
-                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_millis(100));
+                SshTunnelManager::with_ssh_program(script.0.clone(), Duration::from_millis(100));
             let mut profile = valid_profile();
             profile.local_socks_port = port;
             let result = manager.start(profile).await;
             assert!(result.unwrap_err().contains("already in use"));
             drop(listener);
-            fs::remove_file(script).unwrap();
         }
 
         #[tokio::test]
