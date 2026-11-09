@@ -48,7 +48,9 @@ impl SshProfile {
         }
         if let Some(path) = &self.identity_file {
             if !path.is_file() {
-                return Err(\n                "The selected SSH identity file does not exist or is not a file.".into(),\n            );
+                return Err(
+                "The selected SSH identity file does not exist or is not a file.".into(),
+            );
             }
         }
         Ok(())
@@ -163,7 +165,11 @@ impl SshTunnelManager {
 fn build_arguments(profile: &SshProfile) -> Vec<String> {
     let mut args = vec![
         "-F".into(),
-        if cfg!(windows) {\n            "NUL".into()\n        } else {\n            "/dev/null".into()\n        },
+        if cfg!(windows) {
+            "NUL".into()
+        } else {
+            "/dev/null".into()
+        },
         "-N".into(),
         "-T".into(),
         "-D".into(),
@@ -282,7 +288,7 @@ for argument in "$@"; do
   if [ "$previous" = "-D" ]; then port=$(printf '%s' "$argument" | cut -d: -f2); fi
   previous="$argument"
 done
-exec python3 -c 'import socket,sys,time; s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1); s.bind(("127.0.0.1",int(sys.argv[1]))); s.listen(); time.sleep(float(sys.argv[2]))' "$port" "{seconds}""#
+exec python3 -c 'import socket,sys,time; s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1); s.bind(("127.0.0.1",int(sys.argv[1]))); s.listen(8); time.sleep(float(sys.argv[2]))' "$port" "{seconds}""#
             )
         }
 
