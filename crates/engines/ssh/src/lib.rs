@@ -49,8 +49,8 @@ impl SshProfile {
         if let Some(path) = &self.identity_file {
             if !path.is_file() {
                 return Err(
-                "The selected SSH identity file does not exist or is not a file.".into(),
-            );
+                    "The selected SSH identity file does not exist or is not a file.".into(),
+                );
             }
         }
         Ok(())
