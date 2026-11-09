@@ -9,9 +9,7 @@ async fn start_ssh_tunnel(
 }
 
 #[tauri::command]
-async fn stop_ssh_tunnel(
-    manager: tauri::State<'_, SshTunnelManager>,
-) -> Result<(), String> {
+async fn stop_ssh_tunnel(manager: tauri::State<'_, SshTunnelManager>) -> Result<(), String> {
     manager.stop().await
 }
 
