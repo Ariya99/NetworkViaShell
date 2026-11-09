@@ -108,3 +108,4 @@ jobs:
           if [ -f "$test_dir/sshd.pid" ]; then
             kill "$(cat "$test_dir/sshd.pid")" 2>/dev/null || true
           fi
+          rm -rf "$test_dir"
