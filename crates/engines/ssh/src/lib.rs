@@ -319,7 +319,7 @@ exec python3 -c 'import socket,sys,time; s=socket.socket(); s.setsockopt(socket.
             let port = free_port();
             let script = fake_ssh(&listener_script("30"));
             let manager =
-                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_secs(2));
+                SshTunnelManager::with_ssh_program(script.0.clone(), Duration::from_secs(2));
             let mut profile = valid_profile();
             profile.local_socks_port = port;
             assert_eq!(
@@ -330,7 +330,6 @@ exec python3 -c 'import socket,sys,time; s=socket.socket(); s.setsockopt(socket.
             manager.stop().await.unwrap();
             manager.stop().await.unwrap();
             assert!(TcpStream::connect(("127.0.0.1", port)).await.is_err());
-            fs::remove_file(script).unwrap();
         }
 
         #[tokio::test]
@@ -338,34 +337,31 @@ exec python3 -c 'import socket,sys,time; s=socket.socket(); s.setsockopt(socket.
             let port = free_port();
             let script = fake_ssh(&listener_script("0.3"));
             let manager =
-                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_secs(2));
+                SshTunnelManager::with_ssh_program(script.0.clone(), Duration::from_secs(2));
             let mut profile = valid_profile();
             profile.local_socks_port = port;
             manager.start(profile).await.unwrap();
             sleep(Duration::from_millis(450)).await;
             manager.stop().await.unwrap();
             assert!(TcpStream::connect(("127.0.0.1", port)).await.is_err());
-            fs::remove_file(script).unwrap();
         }
 
         #[tokio::test]
         async fn reports_an_early_ssh_process_exit() {
             let script = fake_ssh("exit 17");
             let manager =
-                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_secs(1));
+                SshTunnelManager::with_ssh_program(script.0.clone(), Duration::from_secs(1));
             let result = manager.start(valid_profile()).await;
             assert!(result.unwrap_err().contains("exited before"));
-            fs::remove_file(script).unwrap();
         }
 
         #[tokio::test]
         async fn startup_timeout_kills_the_unresponsive_child() {
             let script = fake_ssh("exec python3 -c 'import time; time.sleep(30)'");
             let manager =
-                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_millis(150));
+                SshTunnelManager::with_ssh_program(script.0.clone(), Duration::from_millis(150));
             let result = manager.start(valid_profile()).await;
             assert!(result.unwrap_err().contains("Timed out"));
-            fs::remove_file(script).unwrap();
         }
     }
 }
