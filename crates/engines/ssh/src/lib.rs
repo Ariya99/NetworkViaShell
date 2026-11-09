@@ -25,7 +25,8 @@ impl SshProfile {
     pub fn validate(&self) -> Result<(), String> {
         if self.host.is_empty()
             || self.host.starts_with('-')
-            || !self.host
+            || !self
+                .host
                 .bytes()
                 .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'-' | b':' | b'%' | b'_'))
         {
@@ -34,7 +35,8 @@ impl SshProfile {
         if self.username.is_empty()
             || self.username.starts_with('-')
             || self.username.len() > 64
-            || !self.username
+            || !self
+                .username
                 .bytes()
                 .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-'))
         {
@@ -79,7 +81,9 @@ impl SshTunnelManager {
         profile.validate()?;
         let mut running = self.child.lock().await;
         if running.is_some() {
-            return Err("An SSH tunnel is already running. Stop it before starting another.".into());
+            return Err(
+                "An SSH tunnel is already running. Stop it before starting another.".into(),
+            );
         }
 
         let bind_address = format!("127.0.0.1:{}", profile.local_socks_port);
@@ -254,12 +258,25 @@ mod tests {
             fs,
             net::TcpListener as StdTcpListener,
             os::unix::fs::PermissionsExt,
+            path::Path,
             sync::atomic::{AtomicU64, Ordering},
         };
 
         static NEXT_SCRIPT: AtomicU64 = AtomicU64::new(0);
 
         struct FakeSsh(PathBuf);
+
+        impl FakeSsh {
+            fn clone(&self) -> PathBuf {
+                self.0.clone()
+            }
+        }
+
+        impl AsRef<Path> for FakeSsh {
+            fn as_ref(&self) -> &Path {
+                &self.0
+            }
+        }
 
         impl Drop for FakeSsh {
             fn drop(&mut self) {
@@ -326,7 +343,11 @@ exec python3 -c 'import socket,sys,time; s=socket.socket(); s.setsockopt(socket.
                 manager.start(profile.clone()).await.unwrap(),
                 format!("127.0.0.1:{port}")
             );
-            assert!(manager.start(profile).await.unwrap_err().contains("already running"));
+            assert!(manager
+                .start(profile)
+                .await
+                .unwrap_err()
+                .contains("already running"));
             manager.stop().await.unwrap();
             manager.stop().await.unwrap();
             assert!(TcpStream::connect(("127.0.0.1", port)).await.is_err());
