@@ -34,8 +34,7 @@ impl SshProfile {
         if self.username.is_empty()
             || self.username.starts_with('-')
             || self.username.len() > 64
-            || !self
-                .username
+            || !self.username
                 .bytes()
                 .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-'))
         {
@@ -56,9 +55,20 @@ impl SshProfile {
     }
 }
 
-#[derive(Default)]
 pub struct SshTunnelManager {
     child: Mutex<Option<Child>>,
+    ssh_program: PathBuf,
+    startup_timeout: Duration,
+}
+
+impl Default for SshTunnelManager {
+    fn default() -> Self {
+        Self {
+            child: Mutex::new(None),
+            ssh_program: PathBuf::from("ssh"),
+            startup_timeout: STARTUP_TIMEOUT,
+        }
+    }
 }
 
 impl SshTunnelManager {
@@ -76,7 +86,7 @@ impl SshTunnelManager {
             .map_err(|_| "The requested local SOCKS port is already in use.".to_string())?;
         drop(probe);
 
-        let mut command = Command::new("ssh");
+        let mut command = Command::new(&self.ssh_program);
         command
             .args(build_arguments(&profile))
             .stdin(Stdio::null())
@@ -89,7 +99,7 @@ impl SshTunnelManager {
                 .to_string()
         })?;
 
-        let deadline = Instant::now() + STARTUP_TIMEOUT;
+        let deadline = Instant::now() + self.startup_timeout;
         loop {
             if child
                 .try_wait()
@@ -139,16 +149,21 @@ impl SshTunnelManager {
         }
         Ok(())
     }
+
+    #[cfg(test)]
+    fn with_ssh_program(ssh_program: PathBuf, startup_timeout: Duration) -> Self {
+        Self {
+            child: Mutex::new(None),
+            ssh_program,
+            startup_timeout,
+        }
+    }
 }
 
 fn build_arguments(profile: &SshProfile) -> Vec<String> {
     let mut args = vec![
         "-F".into(),
-        if cfg!(windows) {
-            "NUL".into()
-        } else {
-            "/dev/null".into()
-        },
+        if cfg!(windows) { "NUL".into() } else { "/dev/null".into() },
         "-N".into(),
         "-T".into(),
         "-D".into(),
@@ -224,5 +239,120 @@ mod tests {
         assert!(args
             .windows(2)
             .any(|pair| pair[0] == "-o" && pair[1] == "StrictHostKeyChecking=yes"));
+    }
+
+    #[cfg(unix)]
+    mod lifecycle {
+        use super::*;
+        use std::{
+            fs,
+            net::TcpListener as StdTcpListener,
+            os::unix::fs::PermissionsExt,
+            sync::atomic::{AtomicU64, Ordering},
+        };
+
+        static NEXT_SCRIPT: AtomicU64 = AtomicU64::new(0);
+
+        fn fake_ssh(body: &str) -> PathBuf {
+            let id = NEXT_SCRIPT.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "network-via-shell-fake-ssh-{}-{id}.sh",
+                std::process::id()
+            ));
+            fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+            let mut permissions = fs::metadata(&path).unwrap().permissions();
+            permissions.set_mode(0o700);
+            fs::set_permissions(&path, permissions).unwrap();
+            path
+        }
+
+        fn free_port() -> u16 {
+            StdTcpListener::bind("127.0.0.1:0")
+                .unwrap()
+                .local_addr()
+                .unwrap()
+                .port()
+        }
+
+        fn listener_script(seconds: &str) -> String {
+            format!(
+                r#"port=""
+previous=""
+for argument in "$@"; do
+  if [ "$previous" = "-D" ]; then port=$(printf '%s' "$argument" | cut -d: -f2); fi
+  previous="$argument"
+done
+exec python3 -c 'import socket,sys,time; s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1); s.bind(("127.0.0.1",int(sys.argv[1]))); s.listen(); time.sleep(float(sys.argv[2]))' "$port" "{seconds}""#
+            )
+        }
+
+        #[tokio::test]
+        async fn rejects_an_occupied_local_port_without_spawning_ssh() {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let port = listener.local_addr().unwrap().port();
+            let script = fake_ssh("exit 0");
+            let manager =
+                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_millis(100));
+            let mut profile = valid_profile();
+            profile.local_socks_port = port;
+            let result = manager.start(profile).await;
+            assert!(result.unwrap_err().contains("already in use"));
+            drop(listener);
+            fs::remove_file(script).unwrap();
+        }
+
+        #[tokio::test]
+        async fn start_rejects_second_tunnel_and_stop_is_idempotent() {
+            let port = free_port();
+            let script = fake_ssh(&listener_script("30"));
+            let manager =
+                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_secs(2));
+            let mut profile = valid_profile();
+            profile.local_socks_port = port;
+            assert_eq!(
+                manager.start(profile.clone()).await.unwrap(),
+                format!("127.0.0.1:{port}")
+            );
+            assert!(manager.start(profile).await.unwrap_err().contains("already running"));
+            manager.stop().await.unwrap();
+            manager.stop().await.unwrap();
+            assert!(TcpStream::connect(("127.0.0.1", port)).await.is_err());
+            fs::remove_file(script).unwrap();
+        }
+
+        #[tokio::test]
+        async fn stop_handles_an_unexpectedly_exited_ssh_process() {
+            let port = free_port();
+            let script = fake_ssh(&listener_script("0.3"));
+            let manager =
+                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_secs(2));
+            let mut profile = valid_profile();
+            profile.local_socks_port = port;
+            manager.start(profile).await.unwrap();
+            sleep(Duration::from_millis(450)).await;
+            manager.stop().await.unwrap();
+            assert!(TcpStream::connect(("127.0.0.1", port)).await.is_err());
+            fs::remove_file(script).unwrap();
+        }
+
+        #[tokio::test]
+        async fn reports_an_early_ssh_process_exit() {
+            let script = fake_ssh("exit 17");
+            let manager =
+                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_secs(1));
+            let result = manager.start(valid_profile()).await;
+            assert!(result.unwrap_err().contains("exited before"));
+            fs::remove_file(script).unwrap();
+        }
+
+        #[tokio::test]
+        async fn startup_timeout_kills_the_unresponsive_child() {
+            let script = fake_ssh("exec python3 -c 'import time; time.sleep(30)'");
+            let manager =
+                SshTunnelManager::with_ssh_program(script.clone(), Duration::from_millis(150));
+            let result = manager.start(valid_profile()).await;
+            assert!(result.unwrap_err().contains("Timed out"));
+            fs::remove_file(script).unwrap();
+        }
     }
 }
