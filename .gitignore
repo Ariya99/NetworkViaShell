@@ -1,24 +1,16 @@
-# Rust
 /target/
 **/*.rs.bk
-Cargo.lock
-
-# Tauri / frontend
 node_modules/
 dist/
 .vite/
 .tauri/
 src-tauri/target/
 *.log
-
-# IDE / OS
 .idea/
 .vscode/*
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
-
-# Local secrets and environment
 .env
 .env.*
 !.env.example
