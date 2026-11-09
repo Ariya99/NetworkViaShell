@@ -25,14 +25,19 @@ impl SshProfile {
     pub fn validate(&self) -> Result<(), String> {
         if self.host.is_empty()
             || self.host.starts_with('-')
-            || !self.host.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'-' | b':' | b'%' | b'_'))
+            || !self.host
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'-' | b':' | b'%' | b'_'))
         {
             return Err("Enter a valid SSH host name or IP address.".into());
         }
         if self.username.is_empty()
             || self.username.starts_with('-')
             || self.username.len() > 64
-            || !self.username.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-'))
+            || !self
+                .username
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-'))
         {
             return Err("Enter a valid SSH username.".into());
         }
@@ -72,23 +77,36 @@ impl SshTunnelManager {
         drop(probe);
 
         let mut command = Command::new("ssh");
-        command.args(build_arguments(&profile))
+        command
+            .args(build_arguments(&profile))
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .kill_on_drop(true);
 
         let mut child = command.spawn().map_err(|_| {
-            "Could not start OpenSSH. Install the OpenSSH client and ensure ssh is on PATH.".to_string()
+            "Could not start OpenSSH. Install the OpenSSH client and ensure ssh is on PATH."
+                .to_string()
         })?;
 
         let deadline = Instant::now() + STARTUP_TIMEOUT;
         loop {
-            if child.try_wait().map_err(|_| "Could not inspect the OpenSSH process.".to_string())?.is_some() {
-                return Err("OpenSSH exited before the SOCKS listener became ready. Check the host, key/agent, and known_hosts entry.".into());
+            if child
+                .try_wait()
+                .map_err(|_| "Could not inspect the OpenSSH process.".to_string())?
+                .is_some()
+            {
+                return Err(
+                    "OpenSSH exited before the SOCKS listener became ready. Check the host, key/agent, and known_hosts entry."
+                        .into(),
+                );
             }
             if TcpStream::connect(&bind_address).await.is_ok() {
-                if child.try_wait().map_err(|_| "Could not inspect the OpenSSH process.".to_string())?.is_some() {
+                if child
+                    .try_wait()
+                    .map_err(|_| "Could not inspect the OpenSSH process.".to_string())?
+                    .is_some()
+                {
                     return Err("OpenSSH exited during tunnel startup.".into());
                 }
                 *running = Some(child);
@@ -107,11 +125,15 @@ impl SshTunnelManager {
     pub async fn stop(&self) -> Result<(), String> {
         let mut running = self.child.lock().await;
         if let Some(mut child) = running.take() {
-            let already_exited = child.try_wait()
+            let already_exited = child
+                .try_wait()
                 .map_err(|_| "Could not inspect the OpenSSH process.".to_string())?
                 .is_some();
             if !already_exited {
-                child.kill().await.map_err(|_| "Could not stop the OpenSSH process.".to_string())?;
+                child
+                    .kill()
+                    .await
+                    .map_err(|_| "Could not stop the OpenSSH process.".to_string())?;
                 let _ = child.wait().await;
             }
         }
@@ -122,19 +144,29 @@ impl SshTunnelManager {
 fn build_arguments(profile: &SshProfile) -> Vec<String> {
     let mut args = vec![
         "-F".into(),
-        if cfg!(windows) { "NUL".into() } else { "/dev/null".into() },
+        if cfg!(windows) {
+            "NUL".into()
+        } else {
+            "/dev/null".into()
+        },
         "-N".into(),
         "-T".into(),
         "-D".into(),
         format!("127.0.0.1:{}", profile.local_socks_port),
         "-p".into(),
         profile.port.to_string(),
-        "-o".into(), "BatchMode=yes".into(),
-        "-o".into(), "ExitOnForwardFailure=yes".into(),
-        "-o".into(), "StrictHostKeyChecking=yes".into(),
-        "-o".into(), "ConnectTimeout=10".into(),
-        "-o".into(), "ServerAliveInterval=30".into(),
-        "-o".into(), "ServerAliveCountMax=3".into(),
+        "-o".into(),
+        "BatchMode=yes".into(),
+        "-o".into(),
+        "ExitOnForwardFailure=yes".into(),
+        "-o".into(),
+        "StrictHostKeyChecking=yes".into(),
+        "-o".into(),
+        "ConnectTimeout=10".into(),
+        "-o".into(),
+        "ServerAliveInterval=30".into(),
+        "-o".into(),
+        "ServerAliveCountMax=3".into(),
     ];
     if let Some(identity_file) = &profile.identity_file {
         args.push("-i".into());
@@ -150,7 +182,13 @@ mod tests {
     use super::*;
 
     fn valid_profile() -> SshProfile {
-        SshProfile { host: "example.com".into(), port: 22, username: "tunnel_user".into(), local_socks_port: 1080, identity_file: None }
+        SshProfile {
+            host: "example.com".into(),
+            port: 22,
+            username: "tunnel_user".into(),
+            local_socks_port: 1080,
+            identity_file: None,
+        }
     }
 
     #[test]
@@ -183,6 +221,8 @@ mod tests {
         let args = build_arguments(&valid_profile());
         assert!(args.iter().any(|arg| arg == "127.0.0.1:1080"));
         assert!(args.iter().any(|arg| arg == "tunnel_user@example.com"));
-        assert!(args.windows(2).any(|pair| pair[0] == "-o" && pair[1] == "StrictHostKeyChecking=yes"));
+        assert!(args
+            .windows(2)
+            .any(|pair| pair[0] == "-o" && pair[1] == "StrictHostKeyChecking=yes"));
     }
 }
