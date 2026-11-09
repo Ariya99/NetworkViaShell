@@ -26,7 +26,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \\\n            libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev \\\n            libssl-dev librsvg2-dev libayatana-appindicator3-dev openssh-server
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev openssh-server
       - name: Provision disposable OpenSSH integration server
         if: runner.os == 'Linux'
         shell: bash
