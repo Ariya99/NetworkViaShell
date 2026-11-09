@@ -152,7 +152,7 @@ impl SshTunnelManager {
         Ok(())
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     fn with_ssh_program(ssh_program: PathBuf, startup_timeout: Duration) -> Self {
         Self {
             child: Mutex::new(None),
