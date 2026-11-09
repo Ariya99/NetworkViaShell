@@ -10,6 +10,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+network-via-shell-ssh = { path = "../../../crates/engines/ssh" }
 
 [lints]
 workspace = true
