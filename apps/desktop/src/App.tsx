@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 type TunnelProfile = {
@@ -19,7 +19,7 @@ function App() {
   const [endpoint, setEndpoint] = useState("");
   const [error, setError] = useState("");
 
-  async function connect(event: React.FormEvent<HTMLFormElement>) {
+  async function connect(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setStatus("connecting");
