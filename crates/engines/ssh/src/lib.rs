@@ -48,7 +48,7 @@ impl SshProfile {
         }
         if let Some(path) = &self.identity_file {
             if !path.is_file() {
-                return Err("The selected SSH identity file does not exist or is not a file.".into());
+                return Err(\n                "The selected SSH identity file does not exist or is not a file.".into(),\n            );
             }
         }
         Ok(())
@@ -163,7 +163,7 @@ impl SshTunnelManager {
 fn build_arguments(profile: &SshProfile) -> Vec<String> {
     let mut args = vec![
         "-F".into(),
-        if cfg!(windows) { "NUL".into() } else { "/dev/null".into() },
+        if cfg!(windows) {\n            "NUL".into()\n        } else {\n            "/dev/null".into()\n        },
         "-N".into(),
         "-T".into(),
         "-D".into(),
