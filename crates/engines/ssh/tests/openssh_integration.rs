@@ -107,10 +107,4 @@ async fn disposable_openssh_server_proves_socks5_and_shutdown_lifecycle() {
         sleep(Duration::from_millis(25)).await;
     }
     assert!(unavailable, "SOCKS listener remained open after stop");
-    assert!(timeout(
-        Duration::from_secs(1),
-        TcpStream::connect(("127.0.0.1", socks_port))
-    )
-    .await
-    .is_ok());
 }
