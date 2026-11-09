@@ -5,15 +5,17 @@
 - [x] Tauri 2 + React + TypeScript desktop shell.
 - [x] Rust workspace and lint configuration.
 - [x] Windows/Linux CI checks defined.
-- [ ] Verify CI runs successfully on GitHub Actions.
+- [x] Verify CI runs successfully on GitHub Actions.
 - [ ] Add dependency/license inventory and release policy.
 
 ## Phase 1 — SSH MVP
-- [ ] SSH profile model: host, port, username, auth reference, local SOCKS port.
-- [ ] Password and key authentication using supported OpenSSH mechanisms.
-- [ ] Safe process launch, readiness detection, reconnect, graceful shutdown.
-- [ ] Local SOCKS5 endpoint, connection status and log view.
+- [x] SSH profile model: host, port, username, identity-file path, local SOCKS port.
+- [x] Key/agent authentication via system OpenSSH (non-interactive; no password handling).
+- [x] Safe process launch, startup readiness detection, and idempotent shutdown.
+- [x] Local SOCKS5 endpoint and basic connection status UI.
 - [ ] Integration tests with disposable SSH test server.
+- [ ] Profile CRUD and persistence.
+- [ ] Secure key-file picker and richer diagnostics.
 
 ## Phase 2 — Configuration manager
 - [ ] Profile CRUD, import/export, strict validation, schema versioning.
