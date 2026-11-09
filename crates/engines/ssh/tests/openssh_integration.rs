@@ -3,7 +3,7 @@ use std::{env, net::SocketAddr, time::Duration};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
-    time::{sleep, timeout},
+    time::sleep,
 };
 
 fn integration_profile(port: u16, identity_file: String) -> SshProfile {
