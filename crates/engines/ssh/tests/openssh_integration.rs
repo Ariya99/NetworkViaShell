@@ -68,18 +68,7 @@ async fn disposable_openssh_server_proves_socks5_and_shutdown_lifecycle() {
     // CONNECT to the loopback echo service on the SSH server side.
     let target_port = echo_address.port().to_be_bytes();
     socks
-        .write_all(&[
-            5,
-            1,
-            0,
-            1,
-            127,
-            0,
-            0,
-            1,
-            target_port[0],
-            target_port[1],
-        ])
+        .write_all(&[5, 1, 0, 1, 127, 0, 0, 1, target_port[0], target_port[1]])
         .await
         .unwrap();
     let mut connect_reply = [0_u8; 10];
