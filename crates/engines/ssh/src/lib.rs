@@ -266,12 +266,6 @@ mod tests {
 
         struct FakeSsh(PathBuf);
 
-        impl FakeSsh {
-            fn clone(&self) -> PathBuf {
-                self.0.clone()
-            }
-        }
-
         impl AsRef<Path> for FakeSsh {
             fn as_ref(&self) -> &Path {
                 &self.0
