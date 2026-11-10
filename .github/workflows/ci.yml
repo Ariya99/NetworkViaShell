@@ -26,7 +26,55 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev openssh-server
+      - name: Provision disposable OpenSSH integration server
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_dir="$RUNNER_TEMP/network-via-shell-ssh"
+          mkdir -p "$test_dir" "$HOME/.ssh" /run/sshd
+          chmod 700 "$HOME/.ssh"
+
+          ssh-keygen -q -t ed25519 -N "" -f "$test_dir/host_key"
+          ssh-keygen -q -t ed25519 -N "" -f "$test_dir/client_key"
+          cp "$test_dir/client_key.pub" "$test_dir/authorized_keys"
+          chmod 600 "$test_dir/authorized_keys"
+
+          sshd_config="$test_dir/sshd_config"
+          cat > "$sshd_config" <<EOF
+          Port 22222
+          ListenAddress 127.0.0.1
+          HostKey $test_dir/host_key
+          PidFile $test_dir/sshd.pid
+          AuthorizedKeysFile $test_dir/authorized_keys
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          ChallengeResponseAuthentication no
+          UsePAM no
+          PermitRootLogin prohibit-password
+          PubkeyAuthentication yes
+          StrictModes no
+          AllowUsers $(id -un)
+          LogLevel VERBOSE
+          EOF
+
+          /usr/sbin/sshd -t -f "$sshd_config"
+          /usr/sbin/sshd -f "$sshd_config" -E "$test_dir/sshd.log"
+          for attempt in $(seq 1 30); do
+            if ssh-keyscan -p 22222 127.0.0.1 >> "$HOME/.ssh/known_hosts" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          grep -q '\[127.0.0.1\]:22222' "$HOME/.ssh/known_hosts"
+
+          {
+            echo "NETWORK_VIA_SHELL_SSH_INTEGRATION=1"
+            echo "NETWORK_VIA_SHELL_SSH_PORT=22222"
+            echo "NETWORK_VIA_SHELL_SSH_USER=$(id -un)"
+            echo "NETWORK_VIA_SHELL_SSH_KEY=$test_dir/client_key"
+          } >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v4
         with:
           version: 9
@@ -46,7 +94,18 @@ jobs:
         run: pnpm build
       - name: Check Rust workspace
         run: cargo check --workspace
+      - name: Run Rust tests
+        run: cargo test --workspace
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
       - name: Run Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Stop disposable OpenSSH server
+        if: always() && runner.os == 'Linux'
+        shell: bash
+        run: |
+          test_dir="$RUNNER_TEMP/network-via-shell-ssh"
+          if [ -f "$test_dir/sshd.pid" ]; then
+            kill "$(cat "$test_dir/sshd.pid")" 2>/dev/null || true
+          fi
+          rm -rf "$test_dir"

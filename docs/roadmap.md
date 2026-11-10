@@ -13,7 +13,8 @@
 - [x] Key/agent authentication via system OpenSSH (non-interactive; no password handling).
 - [x] Safe process launch, startup readiness detection, and idempotent shutdown.
 - [x] Local SOCKS5 endpoint and basic connection status UI.
-- [ ] Integration tests with disposable SSH test server.
+- [x] Deterministic lifecycle tests for occupied ports, duplicate starts, repeated stop, early child exit, unexpected child exit, and startup timeout.
+- [x] Linux CI integration test against a disposable OpenSSH server, including SOCKS5 CONNECT/data relay and listener shutdown.
 - [ ] Profile CRUD and persistence.
 - [ ] Secure key-file picker and richer diagnostics.
 
