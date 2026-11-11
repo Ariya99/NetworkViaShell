@@ -1,6 +1,7 @@
 use network_via_shell_ssh::{SshProfile, SshTunnelManager};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
+use tauri::Manager;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
