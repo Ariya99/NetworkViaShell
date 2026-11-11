@@ -25,7 +25,8 @@ impl SshProfile {
     pub fn validate(&self) -> Result<(), String> {
         if self.host.is_empty()
             || self.host.starts_with('-')
-            || !self.host
+            || !self
+                .host
                 .bytes()
                 .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'-' | b':' | b'%' | b'_'))
         {
@@ -49,7 +50,9 @@ impl SshProfile {
         }
         if let Some(path) = &self.identity_file {
             if !path.is_file() {
-                return Err("The selected SSH identity file does not exist or is not a file.".into());
+                return Err(
+                    "The selected SSH identity file does not exist or is not a file.".into(),
+                );
             }
         }
         Ok(())
@@ -67,7 +70,9 @@ impl SshTunnelManager {
         profile.validate()?;
         let mut running = self.child.lock().await;
         if running.is_some() {
-            return Err("An SSH tunnel is already running. Stop it before starting another.".into());
+            return Err(
+                "An SSH tunnel is already running. Stop it before starting another.".into(),
+            );
         }
 
         let bind_address = format!("127.0.0.1:{}", profile.local_socks_port);

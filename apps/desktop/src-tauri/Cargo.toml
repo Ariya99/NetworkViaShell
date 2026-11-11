@@ -9,6 +9,8 @@ rust-version.workspace = true
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tauri = { version = "2", features = [] }
 network-via-shell-ssh = { path = "../../../crates/engines/ssh" }
 

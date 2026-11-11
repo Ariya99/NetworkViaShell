@@ -46,6 +46,8 @@ jobs:
         run: pnpm build
       - name: Check Rust workspace
         run: cargo check --workspace
+      - name: Run Rust tests
+        run: cargo test --workspace
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
       - name: Run Clippy

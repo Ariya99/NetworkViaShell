@@ -1,49 +1,23 @@
 # Delivery roadmap
 
-## Phase 0 — Repository and build foundation
-- [x] Architecture and module boundaries.
+## 0.1 — Linux SSH SOCKS5 MVP
 - [x] Tauri 2 + React + TypeScript desktop shell.
-- [x] Rust workspace and lint configuration.
-- [x] Windows/Linux CI checks defined.
-- [x] Verify CI runs successfully on GitHub Actions.
-- [ ] Add dependency/license inventory and release policy.
+- [x] SSH key/agent authentication through system OpenSSH.
+- [x] Loopback-only SOCKS5 forwarding, strict host-key checking, start/stop lifecycle.
+- [x] Named profile save/load/update/delete with local persistence.
+- [x] Linux .deb and AppImage draft-release workflow.
+- [ ] Pass CI on the delivery branch.
+- [ ] Verify a real remote SSH server and end-to-end SOCKS5 traffic.
+- [ ] Install and smoke-test .deb and AppImage on clean Linux Mint/Ubuntu.
+- [ ] Publish the reviewed 0.1.0 release.
 
-## Phase 1 — SSH MVP
-- [x] SSH profile model: host, port, username, identity-file path, local SOCKS port.
-- [x] Key/agent authentication via system OpenSSH (non-interactive; no password handling).
-- [x] Safe process launch, startup readiness detection, and idempotent shutdown.
-- [x] Local SOCKS5 endpoint and basic connection status UI.
-- [ ] Integration tests with disposable SSH test server.
-- [ ] Profile CRUD and persistence.
-- [ ] Secure key-file picker and richer diagnostics.
+## Explicitly out of scope for 0.1
+- Windows installer (keep Windows compilation checks, package later).
+- System proxy configuration, DNS/routing changes, TUN/VPN mode.
+- Xray protocols, WireGuard, subscriptions, QR imports.
+- Password storage, private-key import/storage, advanced diagnostics.
 
-## Phase 2 — Configuration manager
-- [ ] Profile CRUD, import/export, strict validation, schema versioning.
-- [ ] OS credential-store references and sanitized diagnostics.
+## Release acceptance
+A release is ready only when profile persistence survives app restart, a real SSH server accepts key authentication, SOCKS5 traffic exits through that server, disconnect closes the local listener/process, and both Linux package formats install and launch on a clean supported machine.
 
-## Phase 3 — Xray engine
-- [ ] Version-pinned engine distribution and signature/hash verification.
-- [ ] VLESS, VMess, Trojan, Shadowsocks mapping.
-- [ ] Share-link and JSON parsing with fixtures and negative tests.
-
-## Phase 4 — OS integration
-- [ ] System proxy with prior-state capture and rollback.
-- [ ] DNS/routing abstractions and privilege boundary.
-- [ ] TUN mode after threat model and cleanup tests.
-
-## Phase 5 — NPV compatibility research
-- [ ] Obtain legitimate sample files and document provenance.
-- [ ] Identify encoding/container/version without assumptions based on extension.
-- [ ] Implement read-only parser only after format is understood.
-- [ ] Add fixtures, malformed-input tests and unsupported-version behavior.
-
-## Phase 6 — Additional engines
-- [ ] WireGuard integration and platform capability checks.
-- [ ] Subscription refresh, QR scanning and advanced diagnostics.
-
-## Phase 7 — Production release
-- [ ] Code signing strategy, reproducible builds, SBOM.
-- [ ] Upgrade, rollback, crash recovery and uninstall cleanup tests.
-- [ ] Security review and release documentation.
-
-A phase is complete only when behavior is implemented, tested on supported platforms, documented, and observable in CI. A folder or interface stub is not evidence of a delivered feature.
+Do not mark manual acceptance items complete based only on CI.
