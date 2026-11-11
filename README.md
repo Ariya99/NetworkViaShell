@@ -1,39 +1,42 @@
 # NetworkViaShell
 
-Cross-platform desktop client for secure network tunnelling, starting with SSH and designed for additional protocol engines.
+A lightweight desktop client for SSH-based local SOCKS5 tunnelling. The first release focuses on a reliable, simple SSH workflow.
 
-> **Status:** Tauri/Rust foundation in progress. No connection engine is implemented yet.
+> **Current milestone:** SSH SOCKS5 MVP. Linux Mint/Ubuntu is the first release target; Windows remains in the CI compatibility matrix.
 
-## Product direction
-- Windows and Linux desktop support.
-- First milestone: SSH local SOCKS5 forwarding, saved profiles, safe lifecycle, logs and diagnostics.
-- Later: Xray protocols (VLESS, VMess, Trojan, Shadowsocks) and WireGuard.
-- Imports: manual profiles, share links, QR, subscriptions, and eventually validated NPV formats.
-- Stack: Tauri 2, React, TypeScript, Rust/Tokio modular monolith.
+## Current capabilities
+- Tauri 2 desktop app with React and TypeScript.
+- SSH key/agent authentication through the system OpenSSH client; no password collection.
+- Local SOCKS5 forwarding bound to 127.0.0.1.
+- Strict host-key verification and non-interactive SSH invocation.
+- Start/stop lifecycle with startup readiness checks.
+- Named connection profiles stored in the application config directory. Private-key contents are never copied into the app.
+- Linux release workflow for .deb and AppImage packages (tag-triggered draft release).
 
-## Repository map
-- `apps/desktop`: Tauri desktop application and React frontend.
-- `crates/domain`: protocol-neutral models and invariants.
-- `crates/connection-manager`: connection lifecycle and orchestration.
-- `crates/engines`: SSH, Xray, WireGuard adapters and engine API.
-- `crates/config-import`: links, QR, JSON, subscription and NPV parsers.
-- `crates/networking`: local proxy, system proxy, TUN, DNS and routing.
-- `crates/storage`: non-secret profile/settings persistence.
-- `crates/secrets`: OS-backed credential storage.
-- `crates/platform`: Windows/Linux integration.
-- `crates/monitoring`, `diagnostics`: metrics, logs and support bundles.
-- `docs`: architecture, roadmap, security and decisions.
+## Linux build
+Install Tauri Linux prerequisites from https://v2.tauri.app/start/prerequisites/, then:
 
-## Engineering principles
-1. Keep `main` releasable; use focused branches and pull requests.
-2. Keep credentials out of SQLite, logs, command-line arguments, and Git.
-3. Treat connection startup/shutdown as transactions with compensating cleanup.
-4. Restore prior system proxy, routes and DNS state after app-owned changes.
-5. Treat imported configuration as untrusted input.
-6. Do not claim NPV compatibility until fixtures and tests prove it.
-7. Prefer a modular monolith; avoid distributed services without demonstrated need.
+```sh
+cd apps/desktop
+pnpm install
+pnpm tauri dev
+```
 
-## Development
-See [desktop app instructions](apps/desktop/README.md), [architecture](docs/architecture/README.md), [roadmap](docs/roadmap.md), [security](docs/security.md), and [contributing](CONTRIBUTING.md).
+Create Linux packages locally with `pnpm tauri build --bundles deb,appimage`. Push a version tag such as `v0.1.0` to trigger a draft GitHub release containing the packages.
 
-This repository is under active development. The current desktop screen is a shell only; it does not create tunnels or store connection profiles.
+## First-run requirements
+- Install the OpenSSH client (`ssh`).
+- Add the SSH server's host key to `~/.ssh/known_hosts` before connecting.
+- Use an SSH key available on disk or through ssh-agent.
+- Configure an application or browser to use SOCKS5 at the displayed `127.0.0.1:PORT` endpoint. The app does not change system proxy settings.
+
+## Security and scope
+- Saved profiles contain connection metadata and an optional identity-file path only, not private-key material or passwords.
+- On Linux, profile storage uses the application config directory with owner-only directory/file permissions and atomic replacement.
+- SSH host-key verification is not bypassed.
+- No system-wide proxy, DNS, routing, VPN/TUN, Xray, or WireGuard functionality is included in 0.1.
+
+## Validation status
+CI checks the frontend and Rust workspace on Ubuntu and Windows. Passing CI does not replace a real-server acceptance test. Before calling 0.1 ready, verify a real SSH server, SOCKS5 traffic through the remote host, reconnect/disconnect behavior, and Linux installers on a clean Linux Mint/Ubuntu machine.
+
+See [desktop instructions](apps/desktop/README.md) and [delivery roadmap](docs/roadmap.md).
