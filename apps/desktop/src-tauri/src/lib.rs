@@ -12,8 +12,7 @@ struct SavedProfile {
 
 fn profiles_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
-    fs::create_dir_all(&dir)
-        .map_err(|e| format!("Could not create app config directory: {e}"))?;
+    fs::create_dir_all(&dir).map_err(|e| format!("Could not create app config directory: {e}"))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
