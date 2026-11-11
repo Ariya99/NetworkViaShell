@@ -17,8 +17,7 @@ fn profiles_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&dir, fs::Permissions::from_mode(0o700))
-            .map_err(|e| e.to_string())?;
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).map_err(|e| e.to_string())?;
     }
     Ok(dir.join("profiles.json"))
 }
@@ -29,8 +28,7 @@ fn read_profiles(app: &tauri::AppHandle) -> Result<Vec<SavedProfile>, String> {
         return Ok(Vec::new());
     }
     let bytes = fs::read(path).map_err(|e| e.to_string())?;
-    serde_json::from_slice(&bytes)
-        .map_err(|e| format!("Saved profiles are invalid: {e}"))
+    serde_json::from_slice(&bytes).map_err(|e| format!("Saved profiles are invalid: {e}"))
 }
 
 fn write_profiles(app: &tauri::AppHandle, profiles: &[SavedProfile]) -> Result<(), String> {
@@ -41,11 +39,9 @@ fn write_profiles(app: &tauri::AppHandle, profiles: &[SavedProfile]) -> Result<(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&temp, fs::Permissions::from_mode(0o600))
-            .map_err(|e| e.to_string())?;
+        fs::set_permissions(&temp, fs::Permissions::from_mode(0o600)).map_err(|e| e.to_string())?;
     }
-    fs::rename(&temp, &path)
-        .map_err(|e| format!("Could not save profiles atomically: {e}"))
+    fs::rename(&temp, &path).map_err(|e| format!("Could not save profiles atomically: {e}"))
 }
 
 #[tauri::command]
@@ -54,11 +50,7 @@ fn list_saved_profiles(app: tauri::AppHandle) -> Result<Vec<SavedProfile>, Strin
 }
 
 #[tauri::command]
-fn save_profile(
-    app: tauri::AppHandle,
-    name: String,
-    profile: SshProfile,
-) -> Result<(), String> {
+fn save_profile(app: tauri::AppHandle, name: String, profile: SshProfile) -> Result<(), String> {
     let name = name.trim();
     if name.is_empty() || name.len() > 48 {
         return Err("Profile name must be 1–48 characters.".into());
@@ -99,9 +91,7 @@ async fn start_ssh_tunnel(
 }
 
 #[tauri::command]
-async fn stop_ssh_tunnel(
-    manager: tauri::State<'_, SshTunnelManager>,
-) -> Result<(), String> {
+async fn stop_ssh_tunnel(manager: tauri::State<'_, SshTunnelManager>) -> Result<(), String> {
     manager.stop().await
 }
 
