@@ -12,7 +12,10 @@ tauri-build = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = [] }
+keyring = "2"
+sysinfo = "0.31"
 network-via-shell-ssh = { path = "../../../crates/engines/ssh" }
+tokio = { version = "1", features = ["macros", "net", "sync", "time"] }
 
 [lints]
 workspace = true
