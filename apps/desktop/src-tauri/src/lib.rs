@@ -1,6 +1,10 @@
 use network_via_shell_ssh::{SshProfile, SshTunnelManager};
 use serde::{Deserialize, Serialize};
-use std::{fs, io::Write, path::{Path, PathBuf}};
+use std::{
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+};
 use tauri::Manager;
 use tempfile::NamedTempFile;
 
