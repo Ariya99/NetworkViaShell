@@ -1,7 +1,12 @@
 use network_via_shell_ssh::{SshProfile, SshTunnelManager};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+};
 use tauri::Manager;
+use tempfile::NamedTempFile;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,17 +35,29 @@ fn read_profiles(app: &tauri::AppHandle) -> Result<Vec<SavedProfile>, String> {
     serde_json::from_slice(&bytes).map_err(|e| format!("Saved profiles are invalid: {e}"))
 }
 
-fn write_profiles(app: &tauri::AppHandle, profiles: &[SavedProfile]) -> Result<(), String> {
-    let path = profiles_path(app)?;
-    let temp = path.with_extension("json.tmp");
-    let bytes = serde_json::to_vec_pretty(profiles).map_err(|e| e.to_string())?;
-    fs::write(&temp, bytes).map_err(|e| e.to_string())?;
+fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| "Profile file has no parent directory.".to_string())?;
+    let mut temp = NamedTempFile::new_in(parent)
+        .map_err(|e| format!("Could not create temporary profile file: {e}"))?;
+    temp.write_all(bytes)
+        .map_err(|e| format!("Could not write temporary profile file: {e}"))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&temp, fs::Permissions::from_mode(0o600)).map_err(|e| e.to_string())?;
+        fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o600))
+            .map_err(|e| e.to_string())?;
     }
-    fs::rename(&temp, &path).map_err(|e| format!("Could not save profiles atomically: {e}"))
+    temp.persist(path)
+        .map_err(|e| format!("Could not save profiles atomically: {}", e.error))?;
+    Ok(())
+}
+
+fn write_profiles(app: &tauri::AppHandle, profiles: &[SavedProfile]) -> Result<(), String> {
+    let path = profiles_path(app)?;
+    let bytes = serde_json::to_vec_pretty(profiles).map_err(|e| e.to_string())?;
+    atomic_write(&path, &bytes)
 }
 
 #[tauri::command]
@@ -107,4 +124,23 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running NetworkViaShell");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn atomic_write_replaces_an_existing_profile_file() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let path = directory.path().join("profiles.json");
+
+        fs::write(&path, b"old profile data").expect("write initial profile data");
+        atomic_write(&path, b"updated profile data").expect("replace existing profile file");
+
+        assert_eq!(
+            fs::read(&path).expect("read updated profile data"),
+            b"updated profile data"
+        );
+    }
 }
